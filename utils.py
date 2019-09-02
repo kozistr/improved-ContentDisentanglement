@@ -1,11 +1,12 @@
 import os
 
-import cv2
 import torch
 import torch.utils.data as data
 import torchvision.transforms as transforms
 import torchvision.utils as vutils
 from torch.autograd import Variable
+
+from PIL import Image
 
 IMG_EXTENSIONS = [
     '.jpg', '.JPG', '.jpeg', '.JPEG',
@@ -73,7 +74,7 @@ def interpolate(args, e1, e2, decoder):
 
 def get_test_images(args):
     comp_transform = transforms.Compose([
-        # transforms.CenterCrop(args.crop),
+        transforms.CenterCrop(args.crop),
         transforms.Resize(args.resize),
         transforms.ToTensor(),
         transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
@@ -151,7 +152,8 @@ class CustomDataset(data.Dataset):
 
     @staticmethod
     def loader(path: str):
-        return cv2.imread(path, cv2.IMREAD_COLOR)[..., ::-1][20:-20, ...]
+        # return cv2.imread(path, cv2.IMREAD_COLOR)[..., ::-1][20:-20, ...]
+        return Image.open(path).convert('RGB')
 
     def __getitem__(self, index):
         path = self.images[index]
