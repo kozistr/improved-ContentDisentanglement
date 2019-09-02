@@ -172,7 +172,7 @@ class E1(nn.Module):
         self.act = nn.LeakyReLU(.2, True)
 
         mlp_layers = [
-            nn.Linear(out_n_f * (2 ** (self.size // (2 ** (n_blocks + 1)))), n_f * 2, bias=False),
+            nn.Linear(out_n_f * ((self.size // (2 ** (n_blocks + 1))) ** 2), n_f * 2, bias=False),
             nn.LeakyReLU(.2, True),
             nn.Linear(n_f * 2, n_f * 2, bias=False),
             nn.LeakyReLU(.2, True)
