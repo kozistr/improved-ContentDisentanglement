@@ -284,9 +284,10 @@ class Decoder(nn.Module):
 
         n_f: int = n_feats
 
-        res_layers = list()
-        for i in range(n_res_blocks):
-            res_layers += [ResidualAdaLINBlock(n_f, n_f, use_bias=False)]
+        res_layers = [
+            ResidualAdaLINBlock(n_f, n_f, use_bias=False)
+            for _ in range(n_res_blocks)
+        ]
 
         layers = list()
         for i in range(n_blocks):
