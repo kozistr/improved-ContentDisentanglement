@@ -167,6 +167,8 @@ if __name__ == '__main__':
     parser.add_argument('--resize', type=int, default=128)
     parser.add_argument('--crop', type=int, default=178)
     parser.add_argument('--sep', type=int, default=256)
+    parser.add_argument('--n_blocks', type=int, default=3)
+    parser.add_argument('--n_res_blocks', type=int, default=6)
     parser.add_argument('--adv_weight', type=float, default=1e-3)
     parser.add_argument('--d_lr', type=float, default=4e-4)
     parser.add_argument('--progress_iter', type=int, default=100)
