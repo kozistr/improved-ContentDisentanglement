@@ -382,6 +382,26 @@ class Discriminator(nn.Module):
         return x, cam_logit
 
 
+class Disc(nn.Module):
+    def __init__(self, n_feat: int = 512, sep: int = 256, size: int = 128):
+        super(Disc, self).__init__()
+        self.sep = sep
+        self.size = size
+        self.n_feat = n_feat
+
+        self.classify = nn.Sequential(
+            nn.utils.spectral_norm(nn.Linear((self.n_feat - self.sep) * self.size * self.size, self.n_feat)),
+            nn.LeakyReLU(0.2, True),
+            nn.utils.spectral_norm(nn.Linear(self.n_feat, 1)),
+            nn.Sigmoid()
+        )
+
+    def forward(self, x):
+        x = x.view(-1, (self.n_feat - self.sep) * self.size * self.size)
+        x = self.classify(x).view(-1)
+        return x
+
+
 class RhoClipper:
     def __init__(self, clip_min: float = 0., clip_max: float = 1.):
         self.clip_min = clip_min

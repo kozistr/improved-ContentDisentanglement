@@ -8,7 +8,11 @@ from torch import optim
 from torch.autograd import Variable
 from torch.utils.data import DataLoader
 
-from models import E1, E2, Decoder, Discriminator, RhoClipper
+from models import E1
+from models import E2
+from models import Disc
+from models import Decoder
+from models import RhoClipper
 from utils import CustomDataset
 from utils import save_images, save_model, load_model
 
@@ -38,10 +42,10 @@ def train(config):
                              config.resize // (2 ** (config.n_blocks + 1))), 0)
 
     # build networks
-    e1 = E1(sep=config.sep)
+    e1 = E1(sep=config.sep, size=config.resize)
     e2 = E2(sep=config.sep)
     decoder = Decoder()
-    disc = Discriminator()
+    disc = Disc(size=config.resize)
 
     mse = nn.MSELoss()
     bce = nn.BCELoss()
