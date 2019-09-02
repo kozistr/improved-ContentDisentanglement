@@ -163,14 +163,24 @@ class E1(nn.Module):
         ]
 
         for i in range(n_res_blocks):
-            layers += [
-                ResidualBlock(out_n_f, out_n_f, use_bias=False)
-            ]
+            layers += [ResidualBlock(out_n_f, out_n_f, use_bias=False)]
 
         self.gap_fc = nn.Linear(out_n_f, 1, bias=False)
         self.gmp_fc = nn.Linear(out_n_f, 1, bias=False)
         self.conv = nn.Conv2d(out_n_f * 2, out_n_f, kernel_size=1, stride=1, bias=True)
         self.act = nn.LeakyReLU(.2, True)
+
+        mlp_layers = [
+            nn.Linear(out_n_f, n_f * 2, bias=False),
+            nn.LeakyReLU(.2, True),
+            nn.Linear(n_f * 2, n_f * 2, bias=False),
+            nn.LeakyReLU(.2, True)
+        ]
+
+        self.gamma = nn.Linear(n_f * 2, n_f * 2, bias=False)
+        self.beta = nn.Linear(n_f * 2, n_f * 2, bias=False)
+
+        self.mlp_model = nn.Sequential(*mlp_layers)
 
         self.model = nn.Sequential(*layers)
 
@@ -190,8 +200,11 @@ class E1(nn.Module):
         cam_logit = torch.cat([gap_logit, gmp_logit], 1)
         x = torch.cat([gap, gmp], 1)
         x = self.conv(x)
-        out = self.act(x)
-        return out, cam_logit
+        x_out = self.act(x)
+
+        out = self.mlp_model(x_out.view(x_out.shape[0], -1))
+        gamma, beta = self.gamma(out), self.beta(out)
+        return x_out, cam_logit, (gamma, beta)
 
 
 class E2(nn.Module):
@@ -365,3 +378,16 @@ class Discriminator(nn.Module):
         x = self.conv(x)
 
         return x, cam_logit
+
+
+class RhoClipper:
+    def __init__(self, clip_min: float = 0., clip_max: float = 1.):
+        self.clip_min = clip_min
+        self.clip_max = clip_max
+        assert clip_min < clip_max
+
+    def __call__(self, module):
+        if hasattr(module, 'rho'):
+            w = module.rho.data
+            w = w.clamp(self.clip_min, self.clip_max)
+            module.rho.data = w

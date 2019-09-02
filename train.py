@@ -8,7 +8,7 @@ from torch import optim
 from torch.autograd import Variable
 from torch.utils.data import DataLoader
 
-from models import E1, E2, Decoder, Discriminator
+from models import E1, E2, Decoder, Discriminator, RhoClipper
 from utils import CustomDataset
 from utils import save_images, save_model, load_model
 
@@ -99,15 +99,15 @@ def train(config):
 
             ae_optimizer.zero_grad()
 
-            a_common, a_common_cam = e1(domain_a_img)
+            a_common, a_common_cam, a_common_mlp = e1(domain_a_img)
             a_separate, a_separate_cam = e2(domain_a_img)
             a_encoding = torch.cat([a_common, a_separate], dim=1)
 
-            b_common, b_common_cam = e1(domain_b_img)
+            b_common, b_common_cam, b_common_mlp = e1(domain_b_img)
             b_encoding = torch.cat([b_common, b_separate], dim=1)
 
-            a_decoding, a_decoding_cam = decoder(a_encoding)
-            b_decoding, b_decoding_cam = decoder(b_encoding)
+            a_decoding, a_decoding_cam = decoder(a_encoding, *a_common_mlp)
+            b_decoding, b_decoding_cam = decoder(b_encoding, *b_common_mlp)
 
             loss = mse(a_decoding, domain_a_img) + mse(b_decoding, domain_b_img)
 
@@ -120,14 +120,16 @@ def train(config):
             torch.nn.utils.clip_grad_norm_(ae_params, 5.)
             ae_optimizer.step()
 
+            decoder.apply(RhoClipper)
+
             if config.adv_weight > 0:
                 disc_optimizer.zero_grad()
 
-                a_common, a_common_cam = e1(domain_a_img)
-                b_common. b_common_cam = e1(domain_b_img)
+                a_common, _, _ = e1(domain_a_img)
+                b_common. _, _ = e1(domain_b_img)
 
-                disc_a, disc_a_cam = disc(a_common)
-                disc_b, disc_b_cam = disc(b_common)
+                disc_a, _ = disc(a_common)
+                disc_b, _ = disc(b_common)
 
                 loss = bce(disc_a, a_label) + bce(disc_b, b_label)
 
@@ -136,8 +138,7 @@ def train(config):
                 disc_optimizer.step()
 
             if _iter % config.progress_iter == 0:
-                print('[*] [%07d/%07d] loss : %.4f' %
-                      (_iter, config.iters, loss))
+                print('[*] [%07d/%07d] loss : %.4f' % (_iter, config.iters, loss))
 
             if _iter % config.display_iter == 0:
                 e1 = e1.eval()
