@@ -116,8 +116,8 @@ def train(config):
             loss = mse(a_decoding, domain_a_img) + mse(b_decoding, domain_b_img)
 
             if config.adv_weight > 0:
-                preds_a, preds_a_cam = disc(a_common)
-                preds_b, preds_b_cam = disc(b_common)
+                preds_a = disc(a_common)
+                preds_b = disc(b_common)
                 loss += config.adv_weight * (bce(preds_a, b_label) + bce(preds_b, b_label))
 
             loss.backward()
@@ -132,8 +132,8 @@ def train(config):
                 a_common, _, _ = e1(domain_a_img)
                 b_common. _, _ = e1(domain_b_img)
 
-                disc_a, _ = disc(a_common)
-                disc_b, _ = disc(b_common)
+                disc_a = disc(a_common)
+                disc_b = disc(b_common)
 
                 loss = bce(disc_a, a_label) + bce(disc_b, b_label)
 
