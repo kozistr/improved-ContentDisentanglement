@@ -46,6 +46,7 @@ def train(config):
     e2 = E2(sep=config.sep)
     decoder = Decoder()
     disc = Disc(size=config.resize)
+    rho_clipper = RhoClipper(0., 1.)
 
     mse = nn.MSELoss()
     bce = nn.BCELoss()
@@ -124,7 +125,7 @@ def train(config):
             torch.nn.utils.clip_grad_norm_(ae_params, 5.)
             ae_optimizer.step()
 
-            decoder.apply(RhoClipper)
+            decoder.apply(rho_clipper)
 
             if config.adv_weight > 0:
                 disc_optimizer.zero_grad()
