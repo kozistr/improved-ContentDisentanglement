@@ -73,7 +73,7 @@ def interpolate(args, e1, e2, decoder):
 
 def get_test_images(args):
     comp_transform = transforms.Compose([
-        transforms.CenterCrop(args.crop),
+        transforms.CenterCrop((args.crop, args.crop)),
         transforms.Resize(args.resize),
         transforms.ToTensor(),
         transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))

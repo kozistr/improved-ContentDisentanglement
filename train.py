@@ -20,7 +20,7 @@ def train(config):
     _iter: int = 0
 
     comp_transform = transforms.Compose([
-        transforms.CenterCrop(config.crop),
+        transforms.CenterCrop((config.crop, config.crop)),
         transforms.Resize(config.resize),
         transforms.RandomHorizontalFlip(),
         transforms.ToTensor(),
