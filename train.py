@@ -3,41 +3,41 @@ import os
 
 import torch
 import torchvision.transforms as transforms
-from models import E1, E2, Decoder, Disc
 from torch import nn
 from torch import optim
 from torch.autograd import Variable
 from torch.utils.data import DataLoader
 
+from models import E1, E2, Decoder, Discriminator
 from utils import CustomDataset
-from utils import save_imgs, save_model, load_model
+from utils import save_images, save_model, load_model
 
 
-def train(args):
-    if not os.path.exists(args.out):
-        os.makedirs(args.out)
+def train(config):
+    if not os.path.exists(config.out):
+        os.makedirs(config.out)
 
     _iter = 0
 
     comp_transform = transforms.Compose([
-        transforms.CenterCrop(args.crop),
-        transforms.Resize(args.resize),
+        transforms.Resize(config.resize),
         transforms.RandomHorizontalFlip(),
         transforms.ToTensor(),
         transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
     ])
 
-    domA_train = CustomDataset(os.path.join(args.root, 'trainA.txt'), transform=comp_transform)
-    domB_train = CustomDataset(os.path.join(args.root, 'trainB.txt'), transform=comp_transform)
+    domain_a_train = CustomDataset(os.path.join(config.root, 'trainA.txt'), transform=comp_transform)
+    domain_b_train = CustomDataset(os.path.join(config.root, 'trainB.txt'), transform=comp_transform)
 
-    A_label = torch.full((args.bs,), 1)
-    B_label = torch.full((args.bs,), 0)
-    B_separate = torch.full((args.bs, args.sep * (args.resize // 64) * (args.resize // 64)), 0)
+    a_label = torch.full((config.bs,), 1)
+    b_label = torch.full((config.bs,), 0)
+    b_separate = torch.full((config.bs, config.sep * (config.resize // 64) * (config.resize // 64)), 0)
 
-    e1 = E1(args.sep, args.resize // 64)
-    e2 = E2(args.sep, args.resize // 64)
-    decoder = Decoder(args.resize // 64)
-    disc = Disc(args.sep, args.resize // 64)
+    # build networks
+    e1 = E1(sep=config.sep)
+    e2 = E2(sep=config.sep)
+    decoder = Decoder()
+    disc = Discriminator()
 
     mse = nn.MSELoss()
     bce = nn.BCELoss()
@@ -48,21 +48,21 @@ def train(args):
         decoder = decoder.cuda()
         disc = disc.cuda()
 
-        A_label = A_label.cuda()
-        B_label = B_label.cuda()
-        B_separate = B_separate.cuda()
+        a_label = a_label.cuda()
+        b_label = b_label.cuda()
+        b_separate = b_separate.cuda()
 
         mse = mse.cuda()
         bce = bce.cuda()
 
     ae_params = list(e1.parameters()) + list(e2.parameters()) + list(decoder.parameters())
-    ae_optimizer = optim.Adam(ae_params, lr=args.lr, betas=(0.5, 0.999))
+    ae_optimizer = optim.Adam(ae_params, lr=config.lr, betas=(0.5, 0.999))
 
     disc_params = disc.parameters()
-    disc_optimizer = optim.Adam(disc_params, lr=args.disclr, betas=(0.5, 0.999))
+    disc_optimizer = optim.Adam(disc_params, lr=config.d_lr, betas=(0.5, 0.999))
 
-    if args.load != '':
-        save_file = os.path.join(args.load, 'checkpoint')
+    if config.load != '':
+        save_file = os.path.join(config.load, 'checkpoint')
         _iter = load_model(save_file, e1, e2, decoder, ae_optimizer, disc, disc_optimizer)
 
     e1 = e1.train()
@@ -70,83 +70,84 @@ def train(args):
     decoder = decoder.train()
     disc = disc.train()
 
-    print('Started training...')
+    print('[*] Started training...')
     while True:
-        domA_loader = torch.utils.data.DataLoader(domA_train, batch_size=args.bs,
-                                                  shuffle=True, num_workers=6)
-        domB_loader = torch.utils.data.DataLoader(domB_train, batch_size=args.bs,
-                                                  shuffle=True, num_workers=6)
-        if _iter >= args.iters:
+        domain_a_loader = torch.utils.data.DataLoader(domain_a_train, batch_size=config.bs,
+                                                      shuffle=True, num_workers=6)
+        domain_b_loader = torch.utils.data.DataLoader(domain_b_train, batch_size=config.bs,
+                                                      shuffle=True, num_workers=6)
+        if _iter >= config.iters:
             break
 
-        for domA_img, domB_img in zip(domA_loader, domB_loader):
-            if domA_img.size(0) != args.bs or domB_img.size(0) != args.bs:
+        for domain_a_img, domain_b_img in zip(domain_a_loader, domain_b_loader):
+            if domain_a_img.size(0) != config.bs or domain_b_img.size(0) != config.bs:
                 break
 
-            domA_img = Variable(domA_img)
-            domB_img = Variable(domB_img)
+            domain_a_img = Variable(domain_a_img)
+            domain_b_img = Variable(domain_b_img)
 
             if torch.cuda.is_available():
-                domA_img = domA_img.cuda()
-                domB_img = domB_img.cuda()
+                domain_a_img = domain_a_img.cuda()
+                domain_b_img = domain_b_img.cuda()
 
-            domA_img = domA_img.view((-1, 3, args.resize, args.resize))
-            domB_img = domB_img.view((-1, 3, args.resize, args.resize))
+            domain_a_img = domain_a_img.view((-1, 3, config.resize, config.resize))
+            domain_b_img = domain_b_img.view((-1, 3, config.resize, config.resize))
 
             ae_optimizer.zero_grad()
 
-            A_common = e1(domA_img)
-            A_separate = e2(domA_img)
-            A_encoding = torch.cat([A_common, A_separate], dim=1)
+            a_common, a_common_cam = e1(domain_a_img)
+            a_separate, a_separate_cam = e2(domain_a_img)
+            a_encoding = torch.cat([a_common, a_separate], dim=1)
 
-            B_common = e1(domB_img)
-            B_encoding = torch.cat([B_common, B_separate], dim=1)
+            b_common, b_common_cam = e1(domain_b_img)
+            b_encoding = torch.cat([b_common, b_separate], dim=1)
 
-            A_decoding = decoder(A_encoding)
-            B_decoding = decoder(B_encoding)
+            a_decoding, a_decoding_cam = decoder(a_encoding)
+            b_decoding, b_decoding_cam = decoder(b_encoding)
 
-            loss = mse(A_decoding, domA_img) + mse(B_decoding, domB_img)
+            g_loss = mse(a_decoding, domain_a_img) + mse(b_decoding, domain_b_img)
 
-            if args.discweight > 0:
-                preds_A = disc(A_common)
-                preds_B = disc(B_common)
-                loss += args.discweight * (bce(preds_A, B_label) + bce(preds_B, B_label))
+            if config.adv_weight > 0:
+                preds_a, preds_a_cam = disc(a_common)
+                preds_b, preds_b_cam = disc(b_common)
+                g_loss += config.adv_weight * (bce(preds_a, b_label) + bce(preds_b, b_label))
 
-            loss.backward()
-            torch.nn.utils.clip_grad_norm_(ae_params, 5)
+            g_loss.backward()
+            torch.nn.utils.clip_grad_norm_(ae_params, 5.)
             ae_optimizer.step()
 
-            if args.discweight > 0:
+            if config.adv_weight > 0:
                 disc_optimizer.zero_grad()
 
-                A_common = e1(domA_img)
-                B_common = e1(domB_img)
+                a_common, a_common_cam = e1(domain_a_img)
+                b_common. b_common_cam = e1(domain_b_img)
 
-                disc_A = disc(A_common)
-                disc_B = disc(B_common)
+                disc_a, disc_a_cam = disc(a_common)
+                disc_b, disc_b_cam = disc(b_common)
 
-                loss = bce(disc_A, A_label) + bce(disc_B, B_label)
+                d_loss = bce(disc_a, a_label) + bce(disc_b, b_label)
 
-                loss.backward()
-                torch.nn.utils.clip_grad_norm_(disc_params, 5)
+                d_loss.backward()
+                torch.nn.utils.clip_grad_norm_(disc_params, 5.)
                 disc_optimizer.step()
 
-            if _iter % args.progress_iter == 0:
-                print('Outfile: %s <<>> Iteration %d' % (args.out, _iter))
+            if _iter % config.progress_iter == 0:
+                print('[*] [%07d/%07d] d_loss : %.4f, g_loss : %.4f' %
+                      (_iter, config.iters, d_loss, g_loss))
 
-            if _iter % args.display_iter == 0:
+            if _iter % config.display_iter == 0:
                 e1 = e1.eval()
                 e2 = e2.eval()
                 decoder = decoder.eval()
 
-                save_imgs(args, e1, e2, decoder, _iter)
+                save_images(config, e1, e2, decoder, _iter)
 
                 e1 = e1.train()
                 e2 = e2.train()
                 decoder = decoder.train()
 
-            if _iter % args.save_iter == 0:
-                save_file = os.path.join(args.out, 'checkpoint')
+            if _iter % config.save_iter == 0:
+                save_file = os.path.join(config.out, 'checkpoint')
                 save_model(save_file, e1, e2, decoder, ae_optimizer, disc, disc_optimizer, _iter)
 
             _iter += 1
@@ -155,15 +156,15 @@ def train(args):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--root', default='')
-    parser.add_argument('--out', default='out')
-    parser.add_argument('--lr', type=float, default=0.0002)
+    parser.add_argument('--out', default='./out')
+    parser.add_argument('--lr', type=float, default=1e-4)
     parser.add_argument('--bs', type=int, default=32)
     parser.add_argument('--iters', type=int, default=1250000)
     parser.add_argument('--resize', type=int, default=128)
     parser.add_argument('--crop', type=int, default=178)
-    parser.add_argument('--sep', type=int, default=25)
-    parser.add_argument('--discweight', type=float, default=0.001)
-    parser.add_argument('--disclr', type=float, default=0.0002)
+    parser.add_argument('--sep', type=int, default=256)
+    parser.add_argument('--adv_weight', type=float, default=1e-3)
+    parser.add_argument('--d_lr', type=float, default=4e-4)
     parser.add_argument('--progress_iter', type=int, default=100)
     parser.add_argument('--display_iter', type=int, default=5000)
     parser.add_argument('--save_iter', type=int, default=10000)
