@@ -17,9 +17,10 @@ def train(config):
     if not os.path.exists(config.out):
         os.makedirs(config.out)
 
-    _iter = 0
+    _iter: int = 0
 
     comp_transform = transforms.Compose([
+        transforms.CenterCrop(config.crop),
         transforms.Resize(config.resize),
         transforms.RandomHorizontalFlip(),
         transforms.ToTensor(),
@@ -31,7 +32,7 @@ def train(config):
 
     a_label = torch.full((config.bs,), 1)
     b_label = torch.full((config.bs,), 0)
-    b_separate = torch.full((config.bs, config.sep * (config.resize // 64) * (config.resize // 64)), 0)
+    b_separate = torch.full((config.bs, config.sep), 0)
 
     # build networks
     e1 = E1(sep=config.sep)
@@ -105,14 +106,14 @@ def train(config):
             a_decoding, a_decoding_cam = decoder(a_encoding)
             b_decoding, b_decoding_cam = decoder(b_encoding)
 
-            g_loss = mse(a_decoding, domain_a_img) + mse(b_decoding, domain_b_img)
+            loss = mse(a_decoding, domain_a_img) + mse(b_decoding, domain_b_img)
 
             if config.adv_weight > 0:
                 preds_a, preds_a_cam = disc(a_common)
                 preds_b, preds_b_cam = disc(b_common)
-                g_loss += config.adv_weight * (bce(preds_a, b_label) + bce(preds_b, b_label))
+                loss += config.adv_weight * (bce(preds_a, b_label) + bce(preds_b, b_label))
 
-            g_loss.backward()
+            loss.backward()
             torch.nn.utils.clip_grad_norm_(ae_params, 5.)
             ae_optimizer.step()
 
@@ -125,15 +126,15 @@ def train(config):
                 disc_a, disc_a_cam = disc(a_common)
                 disc_b, disc_b_cam = disc(b_common)
 
-                d_loss = bce(disc_a, a_label) + bce(disc_b, b_label)
+                loss = bce(disc_a, a_label) + bce(disc_b, b_label)
 
-                d_loss.backward()
+                loss.backward()
                 torch.nn.utils.clip_grad_norm_(disc_params, 5.)
                 disc_optimizer.step()
 
             if _iter % config.progress_iter == 0:
-                print('[*] [%07d/%07d] d_loss : %.4f, g_loss : %.4f' %
-                      (_iter, config.iters, d_loss, g_loss))
+                print('[*] [%07d/%07d] loss : %.4f' %
+                      (_iter, config.iters, loss))
 
             if _iter % config.display_iter == 0:
                 e1 = e1.eval()

@@ -26,7 +26,7 @@ def save_images(args, e1, e2, decoder, iters):
 
     for i in range(args.num_display):
         exps.append(test_domain_a[i].unsqueeze(0))
-        separate_a = e2(test_domain_a[i].unsqueeze(0))
+        separate_a, _ = e2(test_domain_a[i].unsqueeze(0))
         for j in range(args.num_display):
             with torch.no_grad():
                 common_b = e1(test_domain_b[j].unsqueeze(0))
@@ -51,13 +51,13 @@ def interpolate(args, e1, e2, decoder):
     with torch.no_grad():
         for i in range(5):
             b_img = test_domain_b[i].unsqueeze(0)
-            common_b = e1(b_img)
+            common_b, _ = e1(b_img)
             for j in range(args.num_display):
                 with torch.no_grad():
                     exps.append(test_domain_a[j].unsqueeze(0))
 
-                    separate_a_1 = e2(test_domain_a[j].unsqueeze(0))
-                    separate_a_2 = e2(test_domain_a[j].unsqueeze(0))
+                    separate_a_1, _ = e2(test_domain_a[j].unsqueeze(0))
+                    separate_a_2, _ = e2(test_domain_a[j].unsqueeze(0))
                     for k in range(_inter_size + 1):
                         cur_sep = float(j) / _inter_size * separate_a_2 + (1 - (float(k) / _inter_size)) * separate_a_1
                         a_encoding = torch.cat([common_b, cur_sep], dim=1)
@@ -151,7 +151,7 @@ class CustomDataset(data.Dataset):
 
     @staticmethod
     def loader(path: str):
-        return cv2.imread(path, cv2.IMREAD_COLOR)[..., ::-1][20:-20, ...]  # (178, 178, 3)
+        return cv2.imread(path, cv2.IMREAD_COLOR)[..., ::-1]
 
     def __getitem__(self, index):
         path = self.images[index]
