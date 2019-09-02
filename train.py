@@ -32,7 +32,10 @@ def train(config):
 
     a_label = torch.full((config.bs,), 1)
     b_label = torch.full((config.bs,), 0)
-    b_separate = torch.full((config.bs, config.sep), 0)
+    b_separate = torch.full((config.bs,
+                             config.sep,
+                             config.resize // (2 ** (config.n_blocks + 1)),
+                             config.resize // (2 ** (config.n_blocks + 1))), 0)
 
     # build networks
     e1 = E1(sep=config.sep)
