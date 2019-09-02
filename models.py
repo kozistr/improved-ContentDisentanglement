@@ -128,10 +128,11 @@ class UpSampleBlock(nn.Module):
 
 
 class E1(nn.Module):
-    def __init__(self, n_feats: int = 32, sep: int = 256,
+    def __init__(self, size: int = 128, n_feats: int = 32, sep: int = 256,
                  n_blocks: int = 3, n_res_blocks: int = 6):
         super(E1, self).__init__()
 
+        self.size = size
         self.sep = sep
 
         n_f = n_feats
@@ -171,7 +172,7 @@ class E1(nn.Module):
         self.act = nn.LeakyReLU(.2, True)
 
         mlp_layers = [
-            nn.Linear(out_n_f, n_f * 2, bias=False),
+            nn.Linear(out_n_f * 2 ** (self.size // 2 ** (n_blocks + 1)), n_f * 2, bias=False),
             nn.LeakyReLU(.2, True),
             nn.Linear(n_f * 2, n_f * 2, bias=False),
             nn.LeakyReLU(.2, True)
@@ -200,7 +201,7 @@ class E1(nn.Module):
         cam_logit = torch.cat([gap_logit, gmp_logit], 1)
         x = torch.cat([gap, gmp], 1)
         x = self.conv(x)
-        x_out = self.act(x)
+        x_out = self.act(x)  # (bs, 256, 8, 8)
 
         out = self.mlp_model(x_out.view(x_out.shape[0], -1))
         gamma, beta = self.gamma(out), self.beta(out)
