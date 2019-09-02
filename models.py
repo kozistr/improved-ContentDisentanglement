@@ -107,111 +107,14 @@ class ResidualBlock(nn.Module):
         return out + x
 
 
-class ContentEncoder(nn.Module):
-    """ContentEncoder Network w/ mask"""
-
-    def __init__(self, conv_dim: int = 64, n_down_blocks: int = 2, n_res_blocks: int = 6):
-        super(ContentEncoder, self).__init__()
-
-        init_layers = [
-            nn.ReflectionPad2d(3),
-            nn.Conv2d(3, conv_dim, kernel_size=7, stride=1, padding=0, bias=False),
-            nn.InstanceNorm2d(conv_dim),
-            nn.LeakyReLU(.2, True)
-        ]
-
-        layers = list()
-        curr_dim: int = conv_dim
-        for i in range(n_down_blocks):
-            layers += [
-                nn.ReflectionPad2d(1),
-                nn.Conv2d(curr_dim, curr_dim * 2, kernel_size=3, stride=2, padding=0, bias=False),
-                nn.InstanceNorm2d(curr_dim * 2),
-                nn.LeakyReLU(.2, True)
-            ]
-            curr_dim *= 2
-
-        for i in range(n_res_blocks):
-            layers += [
-                ResidualBlock(dim_in=curr_dim, dim_out=curr_dim, use_bias=False)
-            ]
-
-        self.gap_fc = nn.Linear(curr_dim, 1, bias=False)
-        self.gmp_fc = nn.Linear(curr_dim, 1, bias=False)
-        self.conv1x1 = nn.Conv2d(curr_dim * 2, curr_dim, kernel_size=1, stride=1, bias=True)
-        self.leaky_relu = nn.LeakyReLU(.2, True)
-
-        self.init = nn.Sequential(*init_layers)
-        self.model = nn.Sequential(*layers)
-
-    def forward(self, x, mask=None):
-        x_init = self.init(x)
-        if mask is not None:
-            x_init = x_init * mask
-        x_out = self.model(x_init)
-
-        gap = F.adaptive_avg_pool2d(x_out, 1)
-        gap_logit = self.gap_fc(gap.view(x_out.shape[0], -1))
-        gap_weight = list(self.gap_fc.parameters())[0]
-        gap = x_out * gap_weight.unsqueeze(2).unsqueeze(3)
-
-        gmp = F.adaptive_max_pool2d(x_out, 1)
-        gmp_logit = self.gmp_fc(gmp.view(x_out.shape[0], -1))
-        gmp_weight = list(self.gmp_fc.parameters())[0]
-        gmp = x_out * gmp_weight.unsqueeze(2).unsqueeze(3)
-
-        cam_logit = torch.cat([gap_logit, gmp_logit], 1)
-        x = torch.cat([gap, gmp], 1)
-        x = self.conv1x1(x)
-        out = self.leaky_relu(x)
-        return out, cam_logit
-
-
-class StyleEncoder(nn.Module):
-    """StyleEncoder Network"""
-
-    def __init__(self, img_size: int = 128,
-                 conv_dim: int = 64, n_down_blocks: int = 2, n_res_blocks: int = 3, lat_dim: int = 256):
-        super(StyleEncoder, self).__init__()
-
-        self.shared_style_encoder = ContentEncoder(
-            conv_dim=conv_dim,
-            n_down_blocks=n_down_blocks,
-            n_res_blocks=n_res_blocks
-        )
-
-        curr_dim: int = conv_dim * (2 ** n_down_blocks)
-
-        mlp_layers = [
-            nn.Linear(((img_size // (2 ** n_down_blocks)) ** 2) * curr_dim, lat_dim, bias=False),
-            nn.LeakyReLU(.2, True),
-            nn.Linear(lat_dim, lat_dim, bias=False),
-            nn.LeakyReLU(.2, True)
-        ]
-
-        self.gamma = nn.Linear(lat_dim, lat_dim, bias=False)
-        self.beta = nn.Linear(lat_dim, lat_dim, bias=False)
-
-        self.mlp_model = nn.Sequential(*mlp_layers)
-
-    def forward(self, x):
-        z_style, z_style_cam_logit = self.shared_style_encoder(x, mask=None)
-
-        out = self.mlp_model(z_style.view(z_style.shape[0], -1))
-        gamma, beta = self.gamma(out), self.beta(out)
-        return z_style, z_style_cam_logit, (gamma, beta)
-
-
 class UpSampleBlock(nn.Module):
     """Up-Sampling Module"""
-
     def __init__(self, conv_dim: int = 64):
         super(UpSampleBlock, self).__init__()
 
         self.up_sample = nn.Upsample(scale_factor=2, mode='nearest')
         self.pad = nn.ReflectionPad2d(1)
         self.conv = nn.Conv2d(conv_dim, conv_dim // 2, kernel_size=3, stride=1, padding=0, bias=False)
-        # self.norm = AdaILN(conv_dim // 2)
         self.norm = ILN(conv_dim // 2)
         self.act = nn.LeakyReLU(.2, True)
 
@@ -219,7 +122,6 @@ class UpSampleBlock(nn.Module):
         x = self.up_sample(x)
         x = self.pad(x)
         x = self.conv(x)
-        # x = self.norm(x, gamma, beta)
         x = self.norm(x)
         x = self.act(x)
         return x
@@ -360,52 +262,106 @@ class E2(nn.Module):
 
 
 class Decoder(nn.Module):
-    def __init__(self, size):
+    def __init__(self, n_feats: int = 512,
+                 n_blocks: int = 4, n_res_blocks: int = 6):
         super(Decoder, self).__init__()
-        self.size = size
 
-        self.main = nn.Sequential(
-            nn.ConvTranspose2d(512, 512, 4, 2, 1),
-            nn.InstanceNorm2d(512),
-            nn.ReLU(inplace=True),
-            nn.ConvTranspose2d(512, 256, 4, 2, 1),
-            nn.InstanceNorm2d(256),
-            nn.ReLU(inplace=True),
-            nn.ConvTranspose2d(256, 128, 4, 2, 1),
-            nn.InstanceNorm2d(128),
-            nn.ReLU(inplace=True),
-            nn.ConvTranspose2d(128, 64, 4, 2, 1),
-            nn.InstanceNorm2d(64),
-            nn.ReLU(inplace=True),
-            nn.ConvTranspose2d(64, 32, 4, 2, 1),
-            nn.InstanceNorm2d(32),
-            nn.ReLU(inplace=True),
-            nn.ConvTranspose2d(32, 3, 4, 2, 1),
+        self.n_res_blocks = n_res_blocks
+
+        n_f: int = n_feats
+
+        res_layers = list()
+        for i in range(n_res_blocks):
+            res_layers += [ResidualAdaLINBlock(n_f, n_f, use_bias=False)]
+
+        layers = list()
+        for i in range(n_blocks):
+            layers += [UpSampleBlock(n_f)]
+            n_f //= 2
+
+        layers += [
+            nn.ReflectionPad2d(3),
+            nn.Conv2d(n_f, 3, kernel_size=7, stride=1, padding=0, bias=False),
             nn.Tanh()
+        ]
+
+        self.res_model = nn.Sequential(*res_layers)
+        self.model = nn.Sequential(*layers)
+
+    def forward(self, x, gamma, beta):
+        for i in range(self.n_res_blocks):
+            x = self.res_model[i](x, gamma, beta)
+        x = self.model(x)
+        return x
+
+
+class Discriminator(nn.Module):
+    """Discriminator Network w/ PatchGAN"""
+
+    def __init__(self, in_ch: int = 3, conv_dim: int = 64, n_down_blocks: int = 5):
+        super(Discriminator, self).__init__()
+
+        layers = list()
+        layers += [
+            nn.ReflectionPad2d(1),
+            nn.utils.spectral_norm(
+                nn.Conv2d(in_ch, conv_dim, kernel_size=4, stride=2, padding=0, bias=True)
+            ),
+            nn.LeakyReLU(.2, True)
+        ]
+
+        curr_dim: int = conv_dim
+        for i in range(1, n_down_blocks - 2):
+            layers += [
+                nn.ReflectionPad2d(1),
+                nn.utils.spectral_norm(
+                    nn.Conv2d(curr_dim, curr_dim * 2, kernel_size=4, stride=2, padding=0, bias=True)
+                ),
+                nn.LeakyReLU(.2, True)
+            ]
+            curr_dim *= 2
+
+        layers += [
+            nn.ReflectionPad2d(1),
+            nn.utils.spectral_norm(
+                nn.Conv2d(curr_dim, curr_dim * 2, kernel_size=4, stride=1, padding=0, bias=True)
+            ),
+            nn.LeakyReLU(.2, True)
+        ]
+        curr_dim *= 2
+
+        self.gap_fc = nn.utils.spectral_norm(nn.Linear(curr_dim, 1, bias=False))
+        self.gmp_fc = nn.utils.spectral_norm(nn.Linear(curr_dim, 1, bias=False))
+        self.conv1x1 = nn.Conv2d(curr_dim * 2, curr_dim, kernel_size=1, stride=1, bias=True)
+        self.leaky_relu = nn.LeakyReLU(.2, True)
+
+        self.pad = nn.ReflectionPad2d(1)
+        self.conv = nn.utils.spectral_norm(
+            nn.Conv2d(curr_dim, 1, kernel_size=4, stride=1, padding=0, bias=False)
         )
 
-    def forward(self, net):
-        net = net.view(-1, 512, self.size, self.size)
-        net = self.main(net)
-        return net
+        self.model = nn.Sequential(*layers)
 
+    def forward(self, x):
+        x = self.model(x)
 
-class Disc(nn.Module):
-    def __init__(self, sep, size):
-        super(Disc, self).__init__()
-        self.sep = sep
-        self.size = size
+        gap = F.adaptive_avg_pool2d(x, 1)
+        gap_logit = self.gap_fc(gap.view(x.shape[0], -1))
+        gap_weight = list(self.gap_fc.parameters())[0]
+        gap = x * gap_weight.unsqueeze(2).unsqueeze(3)
 
-        self.classify = nn.Sequential(
-            nn.Linear((512 - self.sep) * self.size * self.size, 512),
-            nn.LeakyReLU(0.2, inplace=True),
-            nn.Linear(512, 1),
-            nn.Sigmoid()
-        )
+        gmp = F.adaptive_max_pool2d(x, 1)
+        gmp_logit = self.gmp_fc(gmp.view(x.shape[0], -1))
+        gmp_weight = list(self.gmp_fc.parameters())[0]
+        gmp = x * gmp_weight.unsqueeze(2).unsqueeze(3)
 
-    def forward(self, net):
-        net = net.view(-1, (512 - self.sep) * self.size * self.size)
-        net = self.classify(net)
-        net = net.view(-1)
-        return net
+        cam_logit = torch.cat([gap_logit, gmp_logit], dim=1)
+        x = torch.cat([gap, gmp], dim=1)
 
+        x = self.conv1x1(x)
+        x = self.leaky_relu(x)
+
+        x = self.pad(x)
+        x = self.conv(x)
+
+        return x, cam_logit
