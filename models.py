@@ -388,18 +388,19 @@ class Disc(nn.Module):
         self.sep = sep
         self.size = size
         self.n_feat = n_feat
+        self.n_blocks = n_blocks
 
-        n_res = (size // (2 ** n_blocks)) ** 2
+        self.n_res = (self.size // (2 ** self.n_blocks)) ** 2
 
         self.classify = nn.Sequential(
-            nn.utils.spectral_norm(nn.Linear((self.n_feat - self.sep) * n_res, self.n_feat)),
+            nn.utils.spectral_norm(nn.Linear((self.n_feat - self.sep) * self.n_res, self.n_feat)),
             nn.LeakyReLU(0.2, True),
             nn.utils.spectral_norm(nn.Linear(self.n_feat, 1)),
             nn.Sigmoid()
         )
 
     def forward(self, x):
-        x = x.view(-1, (self.n_feat - self.sep) * self.size * self.size)
+        x = x.view(-1, (self.n_feat - self.sep) * self.n_res)
         x = self.classify(x).view(-1)
         return x
 
