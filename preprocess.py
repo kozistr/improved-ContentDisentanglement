@@ -94,6 +94,7 @@ def preprocess_folders(config):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--root", default="")
+    parser.add_argument("--attributes", default="")
     parser.add_argument("--dest", default="./bald", help="path to the destination folder")
     parser.add_argument("--num_test_imgs", default=64, help="number of images in the test set")
     parser.add_argument("--custom", default=5, help="use a custom celeba attribute")
