@@ -27,10 +27,10 @@ def save_images(args, e1, e2, decoder, iters):
 
     for i in range(args.num_display):
         exps.append(test_domain_a[i].unsqueeze(0))
-        separate_a, _ = e2(test_domain_a[i].unsqueeze(0))
+        separate_a = e2(test_domain_a[i].unsqueeze(0))
         for j in range(args.num_display):
             with torch.no_grad():
-                common_b, common_b_cam, common_b_mlp = e1(test_domain_b[j].unsqueeze(0))
+                common_b, common_b_mlp = e1(test_domain_b[j].unsqueeze(0))
 
                 ba_encoding = torch.cat([common_b, separate_a], dim=1)
                 ba_decoding = decoder(ba_encoding, common_b_mlp[0], common_b_mlp[1])
@@ -52,13 +52,13 @@ def interpolate(args, e1, e2, decoder):
     with torch.no_grad():
         for i in range(5):
             b_img = test_domain_b[i].unsqueeze(0)
-            common_b, _, common_b_mlp = e1(b_img)
+            common_b, common_b_mlp = e1(b_img)
             for j in range(args.num_display):
                 with torch.no_grad():
                     exps.append(test_domain_a[j].unsqueeze(0))
 
-                    separate_a_1, _ = e2(test_domain_a[j].unsqueeze(0))
-                    separate_a_2, _ = e2(test_domain_a[j].unsqueeze(0))
+                    separate_a_1 = e2(test_domain_a[j].unsqueeze(0))
+                    separate_a_2 = e2(test_domain_a[j].unsqueeze(0))
                     for k in range(_inter_size + 1):
                         cur_sep = float(j) / _inter_size * separate_a_2 + (1 - (float(k) / _inter_size)) * separate_a_1
                         a_encoding = torch.cat([common_b, cur_sep], dim=1)
@@ -84,9 +84,9 @@ def get_test_images(args):
     domain_b_test = CustomDataset(os.path.join(args.root, 'testB.txt'), transform=comp_transform)
 
     domain_a_test_loader = torch.utils.data.DataLoader(domain_a_test, batch_size=64,
-                                                       shuffle=False, num_workers=6)
+                                                       shuffle=False, num_workers=args.n_threads)
     domain_b_test_loader = torch.utils.data.DataLoader(domain_b_test, batch_size=64,
-                                                       shuffle=False, num_workers=6)
+                                                       shuffle=False, num_workers=args.n_threads)
 
     for domain_a_img in domain_a_test_loader:
         domain_a_img = Variable(domain_a_img)

@@ -166,11 +166,6 @@ class E1(nn.Module):
         for i in range(n_res_blocks):
             layers += [ResidualBlock(out_n_f, out_n_f, use_bias=False)]
 
-        self.gap_fc = nn.Linear(out_n_f, 1, bias=False)
-        self.gmp_fc = nn.Linear(out_n_f, 1, bias=False)
-        self.conv = nn.Conv2d(out_n_f * 2, out_n_f, kernel_size=1, stride=1, bias=True)
-        self.act = nn.LeakyReLU(.2, True)
-
         mlp_layers = [
             nn.Linear(out_n_f * ((self.size // (2 ** (n_blocks + 1))) ** 2), n_f * 2, bias=False),
             nn.LeakyReLU(.2, True),
@@ -188,24 +183,9 @@ class E1(nn.Module):
     def forward(self, x):
         x_out = self.model(x)
 
-        gap = F.adaptive_avg_pool2d(x_out, 1)
-        gap_logit = self.gap_fc(gap.view(x_out.shape[0], -1))
-        gap_weight = list(self.gap_fc.parameters())[0]
-        gap = x_out * gap_weight.unsqueeze(2).unsqueeze(3)
-
-        gmp = F.adaptive_max_pool2d(x_out, 1)
-        gmp_logit = self.gmp_fc(gmp.view(x_out.shape[0], -1))
-        gmp_weight = list(self.gmp_fc.parameters())[0]
-        gmp = x_out * gmp_weight.unsqueeze(2).unsqueeze(3)
-
-        cam_logit = torch.cat([gap_logit, gmp_logit], 1)
-        x = torch.cat([gap, gmp], 1)
-        x = self.conv(x)
-        x_out = self.act(x)  # (bs, 256, 8, 8)
-
         out = self.mlp_model(x_out.view(x_out.shape[0], -1))
         gamma, beta = self.gamma(out), self.beta(out)
-        return x_out, cam_logit, (gamma, beta)
+        return x_out, (gamma, beta)
 
 
 class E2(nn.Module):
@@ -248,31 +228,10 @@ class E2(nn.Module):
                 ResidualBlock(out_n_f, out_n_f, use_bias=False)
             ]
 
-        self.gap_fc = nn.Linear(out_n_f, 1, bias=False)
-        self.gmp_fc = nn.Linear(out_n_f, 1, bias=False)
-        self.conv = nn.Conv2d(out_n_f * 2, out_n_f, kernel_size=1, stride=1, bias=True)
-        self.act = nn.LeakyReLU(.2, True)
-
         self.model = nn.Sequential(*layers)
 
     def forward(self, x):
-        x_out = self.model(x)
-
-        gap = F.adaptive_avg_pool2d(x_out, 1)
-        gap_logit = self.gap_fc(gap.view(x_out.shape[0], -1))
-        gap_weight = list(self.gap_fc.parameters())[0]
-        gap = x_out * gap_weight.unsqueeze(2).unsqueeze(3)
-
-        gmp = F.adaptive_max_pool2d(x_out, 1)
-        gmp_logit = self.gmp_fc(gmp.view(x_out.shape[0], -1))
-        gmp_weight = list(self.gmp_fc.parameters())[0]
-        gmp = x_out * gmp_weight.unsqueeze(2).unsqueeze(3)
-
-        cam_logit = torch.cat([gap_logit, gmp_logit], 1)
-        x = torch.cat([gap, gmp], 1)
-        x = self.conv(x)
-        out = self.act(x)
-        return out, cam_logit
+        return self.model(x)
 
 
 class Decoder(nn.Module):
