@@ -33,7 +33,7 @@ def save_images(args, e1, e2, decoder, iters):
                 common_b, common_b_cam, common_b_mlp = e1(test_domain_b[j].unsqueeze(0))
 
                 ba_encoding = torch.cat([common_b, separate_a], dim=1)
-                ba_decoding = decoder(ba_encoding, common_b_mlp)
+                ba_decoding = decoder(ba_encoding, common_b_mlp[0], common_b_mlp[1])
                 exps.append(ba_decoding)
 
     with torch.no_grad():
@@ -62,7 +62,7 @@ def interpolate(args, e1, e2, decoder):
                     for k in range(_inter_size + 1):
                         cur_sep = float(j) / _inter_size * separate_a_2 + (1 - (float(k) / _inter_size)) * separate_a_1
                         a_encoding = torch.cat([common_b, cur_sep], dim=1)
-                        a_decoding = decoder(a_encoding, common_b_mlp)
+                        a_decoding = decoder(a_encoding, common_b_mlp[0], common_b_mlp[1])
                         exps.append(a_decoding)
                     exps.append(test_domain_a[i].unsqueeze(0))
 

@@ -106,8 +106,8 @@ def train(config):
             b_common, b_common_cam, b_common_mlp = e1(domain_b_img)
             b_encoding = torch.cat([b_common, b_separate], dim=1)
 
-            a_decoding, a_decoding_cam = decoder(a_encoding, *a_common_mlp)
-            b_decoding, b_decoding_cam = decoder(b_encoding, *b_common_mlp)
+            a_decoding, a_decoding_cam = decoder(a_encoding, a_common_mlp[0], a_common_mlp[1])
+            b_decoding, b_decoding_cam = decoder(b_encoding, b_common_mlp[0], b_common_mlp[1])
 
             loss = mse(a_decoding, domain_a_img) + mse(b_decoding, domain_b_img)
 
