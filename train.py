@@ -131,7 +131,7 @@ def train(config):
                 disc_optimizer.zero_grad()
 
                 a_common, _, _ = e1(domain_a_img)
-                b_common. _, _ = e1(domain_b_img)
+                b_common, _, _ = e1(domain_b_img)
 
                 disc_a = disc(a_common)
                 disc_b = disc(b_common)
