@@ -140,14 +140,14 @@ class E1(nn.Module):
         layers += [
             nn.ReflectionPad2d(3),
             nn.Conv2d(3, n_f, kernel_size=7, stride=1, padding=0, bias=False),
-            nn.InstanceNorm2d(n_feats * 1),
+            nn.InstanceNorm2d(n_f),
             nn.LeakyReLU(.2, True)
         ]
 
         for i in range(n_blocks):
             layers += [
                 nn.ReflectionPad2d(1),
-                nn.Conv2d(n_f * 1, n_f * 2,
+                nn.Conv2d(n_f, n_f * 2,
                           kernel_size=3, stride=2, padding=0, bias=False),
                 nn.InstanceNorm2d(n_f * 2),
                 nn.LeakyReLU(.2, True)
@@ -156,7 +156,7 @@ class E1(nn.Module):
 
         out_n_f: int = n_f * 2 - self.sep
         layers += [
-            nn.ReflectionPad2d(3),
+            nn.ReflectionPad2d(1),
             nn.Conv2d(n_f, out_n_f, kernel_size=3, stride=2, padding=0, bias=False),
             nn.InstanceNorm2d(out_n_f),
             nn.LeakyReLU(.2, True)
@@ -223,7 +223,7 @@ class E2(nn.Module):
 
         out_n_f: int = self.sep
         layers += [
-            nn.ReflectionPad2d(3),
+            nn.ReflectionPad2d(1),
             nn.Conv2d(n_f, out_n_f, kernel_size=3, stride=2, padding=0, bias=False),
             nn.InstanceNorm2d(out_n_f),
             nn.LeakyReLU(.2, True)
