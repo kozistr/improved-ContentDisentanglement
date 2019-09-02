@@ -383,14 +383,16 @@ class Discriminator(nn.Module):
 
 
 class Disc(nn.Module):
-    def __init__(self, n_feat: int = 512, sep: int = 256, size: int = 128):
+    def __init__(self, n_feat: int = 512, sep: int = 256, size: int = 128, n_blocks: int = 4):
         super(Disc, self).__init__()
         self.sep = sep
         self.size = size
         self.n_feat = n_feat
 
+        n_res = (size // (2 ** n_blocks)) ** 2
+
         self.classify = nn.Sequential(
-            nn.utils.spectral_norm(nn.Linear((self.n_feat - self.sep) * self.size * self.size, self.n_feat)),
+            nn.utils.spectral_norm(nn.Linear((self.n_feat - self.sep) * n_res, self.n_feat)),
             nn.LeakyReLU(0.2, True),
             nn.utils.spectral_norm(nn.Linear(self.n_feat, 1)),
             nn.Sigmoid()

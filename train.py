@@ -167,7 +167,7 @@ if __name__ == '__main__':
     parser.add_argument('--root', default='')
     parser.add_argument('--out', default='./out')
     parser.add_argument('--lr', type=float, default=1e-4)
-    parser.add_argument('--bs', type=int, default=32)
+    parser.add_argument('--bs', type=int, default=16)
     parser.add_argument('--iters', type=int, default=1250000)
     parser.add_argument('--resize', type=int, default=128)
     parser.add_argument('--crop', type=int, default=178)
