@@ -170,7 +170,7 @@ if __name__ == '__main__':
     parser.add_argument('--lr', type=float, default=1e-4)
     parser.add_argument('--bs', type=int, default=16)
     parser.add_argument('--iters', type=int, default=1250000)
-    parser.add_argument('--resize', type=int, default=128)
+    parser.add_argument('--resize', type=int, default=256)
     parser.add_argument('--crop', type=int, default=178)
     parser.add_argument('--sep', type=int, default=256)
     parser.add_argument('--n_blocks', type=int, default=3)
@@ -179,7 +179,7 @@ if __name__ == '__main__':
     parser.add_argument('--d_lr', type=float, default=4e-4)
     parser.add_argument('--progress_iter', type=int, default=100)
     parser.add_argument('--display_iter', type=int, default=5000)
-    parser.add_argument('--save_iter', type=int, default=10000)
+    parser.add_argument('--save_iter', type=int, default=5000)
     parser.add_argument('--load', default='')
     parser.add_argument('--num_display', type=int, default=12)
 
