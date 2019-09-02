@@ -73,7 +73,7 @@ def interpolate(args, e1, e2, decoder):
 
 def get_test_images(args):
     comp_transform = transforms.Compose([
-        transforms.CenterCrop((args.crop, args.crop)),
+        # transforms.CenterCrop(args.crop),
         transforms.Resize(args.resize),
         transforms.ToTensor(),
         transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
@@ -151,7 +151,7 @@ class CustomDataset(data.Dataset):
 
     @staticmethod
     def loader(path: str):
-        return cv2.imread(path, cv2.IMREAD_COLOR)[..., ::-1]
+        return cv2.imread(path, cv2.IMREAD_COLOR)[..., ::-1][20:-20, ...]
 
     def __getitem__(self, index):
         path = self.images[index]
