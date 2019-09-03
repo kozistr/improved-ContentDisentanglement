@@ -5,28 +5,6 @@ import torch.nn.functional as F
 from torch.nn.parameter import Parameter
 
 
-class AdaILN(nn.Module):
-    def __init__(self, num_features: int, eps: float = 1.1e-5):
-        super(AdaILN, self).__init__()
-        self.eps = eps
-        self.rho = Parameter(torch.Tensor(1, num_features, 1, 1))
-        self.rho.data.fill_(0.9)
-
-    def forward(self, x, gamma, beta):
-        in_mean, in_var = \
-            torch.mean(torch.mean(x, dim=2, keepdim=True), dim=3, keepdim=True), \
-            torch.var(torch.var(x, dim=2, keepdim=True), dim=3, keepdim=True)
-
-        out_in = (x - in_mean) / torch.sqrt(in_var + self.eps)
-        ln_mean, ln_var = \
-            torch.mean(torch.mean(torch.mean(x, dim=1, keepdim=True), dim=2, keepdim=True), dim=3, keepdim=True), \
-            torch.var(torch.var(torch.var(x, dim=1, keepdim=True), dim=2, keepdim=True), dim=3, keepdim=True)
-        out_ln = (x - ln_mean) / torch.sqrt(ln_var + self.eps)
-        out = self.rho.expand(x.shape[0], -1, -1, -1) * out_in + (1 - self.rho.expand(x.shape[0], -1, -1, -1)) * out_ln
-        out = out * gamma.unsqueeze(2).unsqueeze(3) + beta.unsqueeze(2).unsqueeze(3)
-        return out
-
-
 class ILN(nn.Module):
     def __init__(self, num_features: int, eps: float = 1.1e-5):
         super(ILN, self).__init__()
@@ -51,33 +29,6 @@ class ILN(nn.Module):
         out = self.rho.expand(x.shape[0], -1, -1, -1) * out_in + (1-self.rho.expand(x.shape[0], -1, -1, -1)) * out_ln
         out = out * self.gamma.expand(x.shape[0], -1, -1, -1) + self.beta.expand(x.shape[0], -1, -1, -1)
         return out
-
-
-class ResidualAdaLINBlock(nn.Module):
-    """Residual Block w/ Adaptive Instance Layer Normalize"""
-
-    def __init__(self, dim_in: int, dim_out: int, use_bias: bool = False):
-        super(ResidualAdaLINBlock, self).__init__()
-
-        self.pad1 = nn.ReflectionPad2d(1)
-        self.conv1 = nn.Conv2d(dim_in, dim_out, kernel_size=3, stride=1, padding=0, bias=use_bias)
-        self.norm1 = AdaILN(dim_out)
-        self.relu1 = nn.LeakyReLU(.2, True)
-
-        self.pad2 = nn.ReflectionPad2d(1)
-        self.conv2 = nn.Conv2d(dim_out, dim_out, kernel_size=3, stride=1, padding=0, bias=use_bias)
-        self.norm2 = AdaILN(dim_out)
-
-    def forward(self, x, gamma, beta):
-        out = self.pad1(x)
-        out = self.conv1(out)
-        out = self.norm1(out, gamma, beta)
-        out = self.relu1(out)
-
-        out = self.pad2(out)
-        out = self.conv2(out)
-        out = self.norm2(out, gamma, beta)
-        return out + x
 
 
 class ResidualBlock(nn.Module):
@@ -220,7 +171,7 @@ class E2(nn.Module):
 
 class Decoder(nn.Module):
     def __init__(self, n_feats: int = 512,
-                 n_blocks: int = 4, n_res_blocks: int = 6):
+                 n_blocks: int = 4, n_res_blocks: int = 3):
         super(Decoder, self).__init__()
 
         self.n_res_blocks = n_res_blocks
@@ -336,7 +287,7 @@ class Disc(nn.Module):
 
         self.classify = nn.Sequential(
             nn.utils.spectral_norm(nn.Linear((self.n_feat - self.sep) * self.n_res, self.n_feat)),
-            nn.LeakyReLU(0.2, True),
+            nn.LeakyReLU(.2, True),
             nn.utils.spectral_norm(nn.Linear(self.n_feat, 1)),
             nn.Sigmoid()
         )
