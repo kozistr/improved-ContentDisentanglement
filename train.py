@@ -105,15 +105,15 @@ def train(config):
 
             ae_optimizer.zero_grad()
 
-            a_common, a_common_mlp = e1(domain_a_img)
+            a_common = e1(domain_a_img)
             a_separate = e2(domain_a_img)
             a_encoding = torch.cat([a_common, a_separate], dim=1)
 
-            b_common, b_common_mlp = e1(domain_b_img)
+            b_common = e1(domain_b_img)
             b_encoding = torch.cat([b_common, b_separate], dim=1)
 
-            a_decoding = decoder(a_encoding, a_common_mlp[0], a_common_mlp[1])
-            b_decoding = decoder(b_encoding, b_common_mlp[0], b_common_mlp[1])
+            a_decoding = decoder(a_encoding)
+            b_decoding = decoder(b_encoding)
 
             g_loss = mse(a_decoding, domain_a_img) + mse(b_decoding, domain_b_img)
 
@@ -127,8 +127,8 @@ def train(config):
 
             disc_optimizer.zero_grad()
 
-            a_common, _ = e1(domain_a_img)
-            b_common, _ = e1(domain_b_img)
+            a_common = e1(domain_a_img)
+            b_common = e1(domain_b_img)
 
             disc_a = disc(a_common)
             disc_b = disc(b_common)
@@ -168,12 +168,12 @@ if __name__ == '__main__':
     parser.add_argument('--root', default='')
     parser.add_argument('--out', default='./out')
     parser.add_argument('--lr', type=float, default=1e-4)
-    parser.add_argument('--bs', type=int, default=16)
+    parser.add_argument('--bs', type=int, default=8)
     parser.add_argument('--iters', type=int, default=1250000)
     parser.add_argument('--resize', type=int, default=256)
     parser.add_argument('--crop', type=int, default=178)
     parser.add_argument('--beta1', type=float, default=.5)
-    parser.add_argument('--beta2', type=float, default=.98)
+    parser.add_argument('--beta2', type=float, default=.999)
     parser.add_argument('--eps', type=float, default=1e-6)
     parser.add_argument('--sep', type=int, default=256)
     parser.add_argument('--n_blocks', type=int, default=3)

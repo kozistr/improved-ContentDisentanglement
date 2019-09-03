@@ -166,26 +166,10 @@ class E1(nn.Module):
         for i in range(n_res_blocks):
             layers += [ResidualBlock(out_n_f, out_n_f, use_bias=False)]
 
-        mlp_layers = [
-            nn.Linear(out_n_f * ((self.size // (2 ** (n_blocks + 1))) ** 2), n_f * 2, bias=False),
-            nn.LeakyReLU(.2, True),
-            nn.Linear(n_f * 2, n_f * 2, bias=False),
-            nn.LeakyReLU(.2, True)
-        ]
-
-        self.gamma = nn.Linear(n_f * 2, n_f * 2, bias=False)
-        self.beta = nn.Linear(n_f * 2, n_f * 2, bias=False)
-
-        self.mlp_model = nn.Sequential(*mlp_layers)
-
         self.model = nn.Sequential(*layers)
 
     def forward(self, x):
-        x_out = self.model(x)
-
-        out = self.mlp_model(x_out.view(x_out.shape[0], -1))
-        gamma, beta = self.gamma(out), self.beta(out)
-        return x_out, (gamma, beta)
+        return self.model(x)
 
 
 class E2(nn.Module):
@@ -244,7 +228,7 @@ class Decoder(nn.Module):
         n_f: int = n_feats
 
         res_layers = [
-            ResidualAdaLINBlock(n_f, n_f, use_bias=False)
+            ResidualBlock(n_f, n_f, use_bias=False)
             for _ in range(n_res_blocks)
         ]
 
@@ -262,9 +246,8 @@ class Decoder(nn.Module):
         self.res_model = nn.Sequential(*res_layers)
         self.model = nn.Sequential(*layers)
 
-    def forward(self, x, gamma, beta):
-        for i in range(self.n_res_blocks):
-            x = self.res_model[i](x, gamma, beta)
+    def forward(self, x):
+        x = self.res_model(x)
         x = self.model(x)
         return x
 
