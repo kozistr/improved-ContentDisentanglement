@@ -41,8 +41,8 @@ def train(config):
 
     # build networks
     e1 = E1(sep=config.sep, size=config.resize)
-    e2 = E2(n_feats=512, sep=config.sep)
-    decoder = Decoder(n_feats=512)
+    e2 = E2(n_feats=config.n_tot_feats, sep=config.sep)
+    decoder = Decoder(n_feats=config.n_tot_feats)
     disc = Disc(size=config.resize, sep=config.sep)
     rho_clipper = RhoClipper(0., 1.)
 
@@ -176,6 +176,7 @@ if __name__ == '__main__':
     parser.add_argument('--beta2', type=float, default=.999)
     parser.add_argument('--eps', type=float, default=1e-6)
     parser.add_argument('--sep', type=int, default=128)
+    parser.add_argument('--n_tot_feats', type=int, default=384)
     parser.add_argument('--n_blocks', type=int, default=3)
     parser.add_argument('--n_res_blocks', type=int, default=3)
     parser.add_argument('--adv_weight', type=float, default=1e-3)
