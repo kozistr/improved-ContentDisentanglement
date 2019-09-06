@@ -165,8 +165,8 @@ def train(config):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--root', default='')
-    parser.add_argument('--out', default='./out')
+    parser.add_argument('--root', default='./bald/')
+    parser.add_argument('--out', default='./bald_result/')
     parser.add_argument('--lr', type=float, default=1e-4)
     parser.add_argument('--bs', type=int, default=4)
     parser.add_argument('--iters', type=int, default=1250000)
@@ -176,7 +176,7 @@ if __name__ == '__main__':
     parser.add_argument('--beta2', type=float, default=.999)
     parser.add_argument('--eps', type=float, default=1e-6)
     parser.add_argument('--sep', type=int, default=128)
-    parser.add_argument('--n_tot_feats', type=int, default=384)
+    parser.add_argument('--n_tot_feats', type=int, default=512)
     parser.add_argument('--n_blocks', type=int, default=3)
     parser.add_argument('--n_res_blocks', type=int, default=3)
     parser.add_argument('--adv_weight', type=float, default=1e-3)
@@ -184,7 +184,7 @@ if __name__ == '__main__':
     parser.add_argument('--progress_iter', type=int, default=100)
     parser.add_argument('--display_iter', type=int, default=5000)
     parser.add_argument('--save_iter', type=int, default=5000)
-    parser.add_argument('--load', default='')
+    parser.add_argument('--load', default='./bald_result/')
     parser.add_argument('--n_threads', type=int, default=6)
     parser.add_argument('--num_display', type=int, default=12)
 
