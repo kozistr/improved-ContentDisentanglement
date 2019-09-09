@@ -5,8 +5,6 @@ remake the architecture & tuning some hyper-parameters.
 
 based on original pytorch impl [repo](https://github.com/oripress/ContentDisentanglement)
 
-*WIP*
-
 # Explanation
 
 # Requirements
@@ -19,25 +17,34 @@ based on original pytorch impl [repo](https://github.com/oripress/ContentDisenta
 
 * Training Phase
 ```
-python3 train.py --root "./bald" --out "./bald_result" --sep 128 --discweight 0.001
+$ python3 train.py --root "./bald" --out "./bald_result"
+
+or
+
+$ ./train.sh
 ```
 
 * Testing Phase
 ```
-python3 eval.py --data "./bald" --out "./bald_eval" --sep 128 --num_display 10
+$ python3 eval.py --data "./bald" --out "./bald_eval"
 ```
 
 # Result
 
+* 250000 iteration
+![img](./bald_result/experiments_250000.png)
+
+# Limitations
+
 
 # Citation
 ```
-{press2018emerging,
-title={Emerging Disentanglement in Auto-Encoder Based Unsupervised Image Content Transfer},
-author={Ori Press and Tomer Galanti and Sagie Benaim and Lior Wolf},
-booktitle={International Conference on Learning Representations},
-year={2019},
-url={https://openreview.net/forum?id=BylE1205Fm},
+@press2018emerging{
+    title={Emerging Disentanglement in Auto-Encoder Based Unsupervised Image Content Transfer},
+    author={Ori Press and Tomer Galanti and Sagie Benaim and Lior Wolf},
+    booktitle={International Conference on Learning Representations},
+    year={2019},
+    url={https://openreview.net/forum?id=BylE1205Fm},
 }
 ```
 
