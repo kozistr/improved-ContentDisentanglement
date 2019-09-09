@@ -169,7 +169,7 @@ if __name__ == '__main__':
     parser.add_argument('--out', default='./bald_result/')
     parser.add_argument('--lr', type=float, default=1e-4)
     parser.add_argument('--bs', type=int, default=4)
-    parser.add_argument('--iters', type=int, default=1250000)
+    parser.add_argument('--iters', type=int, default=1000000)
     parser.add_argument('--resize', type=int, default=256)
     parser.add_argument('--crop', type=int, default=178)
     parser.add_argument('--beta1', type=float, default=.5)

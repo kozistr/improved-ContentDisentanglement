@@ -1,2 +1,2 @@
 #!/bin/bash
-python3 train.py --root "./bald/" --out "./bald_result"
+CUDA_VISIBLE_DEVICES=0 python3 train.py --root "./bald/" --out "./bald_result"
