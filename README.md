@@ -51,6 +51,8 @@ $ python3 eval.py --data "./bald" --out "./bald_eval"
 # Differences
 |       | baseline | my version |
 | :---: |  :----:  |   :----:   |
+| network | ... | ... | 
+| normalize layer | IN | IN + ILN |
 | bs | 32 | 4 |
 | d_lr / g_lr | 2e-4 / 2e-4 | 4e-4 / 1e-4 | 
 | embedding | 25 / 512 - 25 | 128 / 512 - 128 |
