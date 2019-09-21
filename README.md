@@ -66,6 +66,11 @@ $ python3 eval.py --data "./bald" --out "./bald_eval"
 * It is not worked in case of not aligned sample.
 * Very sensitive at a loc / pos of target image.
 
+# To Do
+* Masked-Guided content transfer
+* More useful losses, (style loss, content loss, feature loss, cam loss, ...)
+* Minimizing the network... current model is too big
+
 # Citation
 ```
 @press2018emerging{
