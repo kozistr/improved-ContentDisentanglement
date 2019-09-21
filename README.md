@@ -51,6 +51,7 @@ $ python3 eval.py --data "./bald" --out "./bald_eval"
 # Differences
 |       | baseline | my version |
 | :---: |  :----:  |   :----:   |
+| iterations | 1.25M | 1M |
 | network | ... | ... | 
 | normalize layer | IN | IN + ILN |
 | bs | 32 | 4 |
@@ -59,7 +60,7 @@ $ python3 eval.py --data "./bald" --out "./bald_eval"
 | up-sampling | conv2d transpose | nn + conv2d |
 | eps | x | 1e-6 |
 
-baseline
+% training time : about 270 hours (11 ~ 12 days) w/ a single gpu, gtx 1080 ti.
 
 # Limitations
 * It is not worked in case of not aligned sample.
