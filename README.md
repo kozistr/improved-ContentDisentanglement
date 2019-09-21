@@ -31,20 +31,11 @@ $ python3 eval.py --data "./bald" --out "./bald_eval"
 
 # Result
 
-* 250K iteration
-![img](./bald_result/experiments_250000.png)
-
-* 500K iteration
-![img](./bald_result/experiments_500000.png)
-
-* 750K iteration
-![img](./bald_result/experiments_750000.png)
-
-* 1M iteration
-![img](./bald_result/experiments_1000000.png)
+* 250K ~ 825K iterations
+![fig](./bald_result/experiments.gif)
 
 # Limitations
-
+* It is not worked in case of not aligned sample.
 
 # Citation
 ```
